@@ -8,22 +8,18 @@ export type AccountType = "mojang"|"cracked"|"microsoft"|"token"
 
 export module MicrosoftAuth {
     export let appID;
-    export let appSecret;
     export let redirectURL;
     export let scope = "XboxLive.signin offline_access";
     let compiledID;
     let compiledScope;
     let compiledUrl;
-    let compiledSecret;
 
     export function setup(_appID, _appSecret, _redirectURL) {
         appID = _appID
-        appSecret = _appSecret
         redirectURL = _redirectURL
         compiledID = encodeURIComponent(appID);
         compiledScope = encodeURIComponent(scope);
         compiledUrl = encodeURIComponent(redirectURL);
-        compiledSecret = encodeURIComponent(appSecret);
     }
 
     export async function _createServer(port: number):Promise<ListeningHttpServer> {
@@ -53,6 +49,19 @@ export module MicrosoftAuth {
                 switch (req.url.split("?")[0]) {
                     case "/token":
                         await res.writeHead(200);
+                        await res.write(
+                            '<html>' +
+                            '<head>' +
+                            '<script type="application/javascript">' +
+                            'function closeWindow() { window.location("", "_self", ""); window.close(); }' +
+                            '</script>' +
+                            '<title>Success</title>' +
+                            '</head>' +
+                            '<body onload="closeWindow()">' +
+                            'Success! You may close this page.' +
+                            '</body>' +
+                            '</html>'
+                        );
                         await res.end();
                         await server.fullClose();
                         if(req.url.includes("?code"))
@@ -100,7 +109,7 @@ export module MicrosoftAuth {
 
     export async function getToken(authCode) {
         let url = "https://login.live.com/oauth20_token.srf";
-        let body = `client_id=${compiledID}&client_secret=${compiledSecret}&code=${authCode}&grant_type=authorization_code&redirect_uri=${compiledUrl}`
+        let body = `client_id=${compiledID}&code=${authCode}&grant_type=authorization_code&redirect_uri=${compiledUrl}`
         let response = await HttpPost(url, body, {"Content-Type": "application/x-www-form-urlencoded"})
 
         let jsonResponse: TokenResponse = JSON.parse(response);
@@ -113,7 +122,7 @@ export module MicrosoftAuth {
 
     export async function getTokenRefresh(refreshToken) {
         let url = "https://login.live.com/oauth20_token.srf";
-        let body = `client_id=${compiledID}&client_secret=${compiledSecret}&refresh_token=${refreshToken}&grant_type=refresh_token&redirect_uri=${compiledUrl}`
+        let body = `client_id=${compiledID}&refresh_token=${refreshToken}&grant_type=refresh_token&redirect_uri=${compiledUrl}`
         let response = await HttpPost(url, body, {"Content-Type": "application/x-www-form-urlencoded"})
 
         let jsonResponse: TokenResponse = JSON.parse(response);
